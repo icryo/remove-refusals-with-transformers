@@ -5,4 +5,3 @@ einops
 torch
 bitsandbytes
 accelerate
-flash-attn
