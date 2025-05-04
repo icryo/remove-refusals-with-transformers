@@ -35,7 +35,7 @@ def main(model_id, output_path):
         quantization_config=BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_compute_dtype=torch.float16),
         low_cpu_mem_usage=True,
         device_map='auto',
-        attn_implementation="flash_attention_2",
+        attn_implementation="eager",
     )
     model.requires_grad_(False)
 
