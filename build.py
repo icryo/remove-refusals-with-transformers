@@ -69,33 +69,31 @@ def main(model_id, output_path):
         tokenizer.apply_chat_template(
             conversation=[{"role": "user", "content": undesired_system_prompt + " " + prompt}],
             add_generation_prompt=True,
+            return_attention_mask=True,
             return_tensors="pt") for prompt in prompts
     ]
 
     bar_generate = tqdm(total = 3 * len(prompts), desc = "Generating samples")
 
     def generate(tokens, max_new_tokens):
+        tokens = {k: v.to(model.device) for k, v in tokens.items()}
         output = model.generate(
-            tokens.to(model.device),
-            use_cache= True if max_new_tokens > 1 else False,
+            **tokens,
+            use_cache=True if max_new_tokens > 1 else False,
             max_new_tokens=max_new_tokens,
             return_dict_in_generate=True,
             output_hidden_states=True,
             pad_token_id=tokenizer.pad_token_id if tokenizer.pad_token_id is not None else tokenizer.eos_token_id
         )
-        
-        """
-        for generated_token_index, hidden_state in enumerate(output.hidden_states):
-            for i, decoder_element in enumerate(hidden_state):
-                print(f"Generated token index: {generated_token_index}, decoder element {i} shape: {decoder_element.shape}")
-        """
-        
-        # NOTE: `hidden_state[:, -1, :]` gets the last hidden state for the batch of tokens generated (ie: batch = 1 for our case, but 1st prompt eval will make [1] dim > 1).
-        # NOTE: `hidden_states[-1]` gets the last hidden state of the last token generated at index of [max_new_tokens-1] (ie: [0] if max_new_tokens=1).
-        # NOTE: `hidden_states[-1][1:]` gets only the hidden states *AFTER* an attention/MLP block. The [0] hidden state is *BEFORE* the first attention/MLP block...
-        hidden_states_by_layer = [hidden_state[:, -1, :].squeeze().to('cpu') for hidden_state in output.hidden_states[-1][1:]]
+    
+        # Extract hidden states from each layer after the last generated token
+        hidden_states_by_layer = [
+            hidden_state[:, -1, :].squeeze().to('cpu')
+            for hidden_state in output.hidden_states[-1][1:]
+        ]
         bar_generate.update(n=1)
         return hidden_states_by_layer
+
         
     baseline_hidden = []
     desired_hidden = []
