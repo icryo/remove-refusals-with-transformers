@@ -19,7 +19,7 @@ python hh_eval_fast.py \
   --edited ./qwen3_30b_bleak \
   --n 40 --max_new_tokens 64
 ```
-###Example
+### Example
 ```
 BASE:
  <think>
