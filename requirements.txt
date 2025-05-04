@@ -5,3 +5,4 @@ einops
 torch
 bitsandbytes
 accelerate
+pip install flash-attn --no-build-isolation
