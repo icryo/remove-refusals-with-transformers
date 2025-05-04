@@ -2,7 +2,7 @@
 
 
 # Evalute the impact
-python hh_eval.py \
+python hh_eval_fast.py \
   --base_id Qwen/Qwen3-30B-A3B \
   --edited ./qwen3_30b_bleak \
   --n 40 --max_new_tokens 64
