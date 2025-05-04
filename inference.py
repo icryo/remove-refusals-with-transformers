@@ -10,7 +10,7 @@ torch.inference_mode()
 
 torch.set_default_device("cpu")
 
-MODEL_ID = "stabilityai/stablelm-2-zephyr-1_6b"
+MODEL_ID = "Qwen/Qwen3-32B"
 #MODEL_ID = "Qwen/Qwen1.5-1.8B-Chat"
 #MODEL_ID = "Qwen/Qwen-1_8B-chat"
 #MODEL_ID = "google/gemma-1.1-2b-it"
