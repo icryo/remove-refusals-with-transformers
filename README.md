@@ -1,12 +1,25 @@
 # Removing refusals with HF Transformers - support for MOE
 
+```
+pip install -r requirements.txt
+```
+### Run
+```
+  python hh.py \
+     --model_id Qwen/Qwen3-30B-A3B \
+     --output_path ./qwen3_30b_bleak \
+     --harmful harmful.txt \
+     --harmless harmless.txt
+```
 
-# Evalute the impact
+### Evalute the impact
+```
 python hh_eval_fast.py \
   --base_id Qwen/Qwen3-30B-A3B \
   --edited ./qwen3_30b_bleak \
   --n 40 --max_new_tokens 64
-
+```
+###Example
 ```
 BASE:
  <think>
