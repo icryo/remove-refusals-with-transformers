@@ -1,14 +1,30 @@
+#!/usr/bin/env -S uv run --python 3.11 --script
+# /// script
+# requires-python = ">=3.10,<3.12"
+# dependencies = [
+#   "numpy<2.0",                     # torch 2.2 wheels compiled with NumPy 1.x
+#   "setuptools>=68",                # triton runtime needs it to import
+#   "torch",                         # 2.2.x CUDA-12 wheel works on a 4090
+#   "transformers>=4.40",
+#   "bitsandbytes>=0.43,<0.44",
+#   "triton==2.1.0",
+#   "accelerate",
+#   "einops",
+#   "jaxtyping",
+#   "tqdm",
+# ]
+# ///
+
 """
-Householder refusal / style edit
---------------------------------
+Householder / refusal-direction edit
+-----------------------------------
 Example:
-  python hh.py \
-     --model_id Qwen/Qwen3-30B-A3B \
-     --output_path ./qwen3_30b_bleak \
-     --harmful harmful.txt \
+  ./hh.py \
+     --model_id  Qwen/Qwen3-30B-A3B \
+     --output_path  ./qwen3_30b_bleak \
+     --harmful  harmful.txt \
      --harmless harmless.txt
 """
-
 import argparse, random, gc, torch
 from pathlib import Path
 from tqdm import tqdm
@@ -18,17 +34,17 @@ from transformers import (
     BitsAndBytesConfig,
 )
 
-# --------- hyper‑parameters --------- #
-NUM_DIR_SAMPLES = 64       # prompts per class for direction
-LAYER_FRACTION  = 0.6      # layer to measure hidden states
-SCALE_FACTOR    = 1.0      # reflection strength
-SKIP_ATTN = False          # edit o_proj?
-SKIP_MLP  = False          # edit down_proj?
+# --------- hyper-parameters --------- #
+NUM_DIR_SAMPLES = 64
+LAYER_FRACTION  = 0.6
+SCALE_FACTOR    = 1.0
+SKIP_ATTN = False
+SKIP_MLP  = False
 SKIP_BEGIN, SKIP_END = 0, 0
 # ------------------------------------ #
 
 
-def load_quant(model_id):
+def load_quant(model_id: str):
     return AutoModelForCausalLM.from_pretrained(
         model_id,
         trust_remote_code=True,
@@ -36,7 +52,8 @@ def load_quant(model_id):
         device_map="auto",
         low_cpu_mem_usage=True,
         quantization_config=BitsAndBytesConfig(
-            load_in_4bit=True, bnb_4bit_compute_dtype=torch.float16
+            load_in_4bit=True,
+            bnb_4bit_compute_dtype=torch.float16,
         ),
         attn_implementation="eager",
     )
@@ -49,7 +66,7 @@ def build_direction(model, tok, harmful, harmless, layer_idx):
                 [{"role": "user", "content": ln.strip()}],
                 add_generation_prompt=True,
                 return_tensors="pt",
-                return_attention_mask=True,   # ← added
+                return_attention_mask=True,
             )
             for ln in lines
         ]
@@ -77,13 +94,12 @@ def build_direction(model, tok, harmful, harmless, layer_idx):
 
 
 def reflect(W, v, scale=SCALE_FACTOR):
-    v = v.view(-1)                       # ← ensures v is 1‑D
+    v = v.view(-1)
     H = torch.eye(v.size(0)) - 2 * scale * torch.outer(v, v)
     return torch.nn.Parameter((H @ W.float()).bfloat16())
 
 
 def main(model_id, output_path, harmful, harmless):
-    # ----- Phase 1: compute direction -----
     quant = load_quant(model_id)
     tok = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
     tok.padding_side = "left"
@@ -97,9 +113,12 @@ def main(model_id, output_path, harmful, harmless):
 
     del quant; gc.collect(); torch.cuda.empty_cache()
 
-    # ----- Phase 2: reload in bf16 on CPU & edit -----
     model = AutoModelForCausalLM.from_pretrained(
-        model_id, trust_remote_code=True, torch_dtype=torch.bfloat16, device_map="cpu", low_cpu_mem_usage=True
+        model_id,
+        trust_remote_code=True,
+        torch_dtype=torch.bfloat16,
+        device_map="cpu",
+        low_cpu_mem_usage=True,
     )
     model.requires_grad_(False)
     layers = model.model.layers
@@ -113,20 +132,24 @@ def main(model_id, output_path, harmful, harmless):
             continue
 
         if not SKIP_ATTN and hasattr(layer.self_attn, "o_proj"):
-            layer.self_attn.o_proj.weight = reflect(layer.self_attn.o_proj.weight.data, v32); bar.update()
+            layer.self_attn.o_proj.weight = reflect(layer.self_attn.o_proj.weight.data, v32)
+            bar.update()
 
         if not SKIP_MLP:
             edited = False
             if hasattr(layer, "mlp") and hasattr(layer.mlp, "down_proj"):
-                layer.mlp.down_proj.weight = reflect(layer.mlp.down_proj.weight.data, v32); edited = True
+                layer.mlp.down_proj.weight = reflect(layer.mlp.down_proj.weight.data, v32)
+                edited = True
             if hasattr(layer, "moe"):
                 for exp in getattr(layer.moe, "experts", []):
                     if hasattr(exp.ffn, "down_proj"):
-                        exp.ffn.down_proj.weight = reflect(exp.ffn.down_proj.weight.data, v32); edited = True
+                        exp.ffn.down_proj.weight = reflect(exp.ffn.down_proj.weight.data, v32)
+                        edited = True
                 if hasattr(layer.moe, "shared_mlp") and hasattr(layer.moe.shared_mlp, "down_proj"):
                     layer.moe.shared_mlp.down_proj.weight = reflect(
                         layer.moe.shared_mlp.down_proj.weight.data, v32
-                    ); edited = True
+                    )
+                    edited = True
             if edited:
                 bar.update()
     bar.close()
@@ -136,7 +159,6 @@ def main(model_id, output_path, harmful, harmless):
     print("✅ edited model saved to", output_path)
 
 
-# ----------------------------- CLI ----------------------------- #
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--model_id", required=True)
