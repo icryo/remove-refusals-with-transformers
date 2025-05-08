@@ -1,20 +1,27 @@
-# Removing refusals with HF Transformers - support for MOE
+# Removing Refusals with HF Transformers (MoE-ready)
+Householder / Auto-Abliteration editor + fast evaluator — zero manual installs thanks to **uv**.
 
-
-### Run
+# install uv (Linux / macOS)
 ```
-  python hh.py \
-     --model_id Qwen/Qwen3-30B-A3B \
-     --output_path ./qwen3_30b_bleak \
-     --harmful harmful.txt \
-     --harmless harmless.txt
+curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
-
-### Evalute the impact
+Run householder
 ```
-python hh_eval_fast.py \
-  --base_id Qwen/Qwen3-30B-A3B \
-  --edited ./qwen3_30b_bleak \
+chmod +x ./hh.py 
+./hh.py \
+  --model_id   Qwen/Qwen3-30B-A3B \
+  --output_path ./qwen3_30b_bleak \
+  --harmful   harmful.txt \
+  --harmless  harmless.txt
+```
+### Evalute the change
+```
+chmod +x ./hh_eval_fast.py
+./hh_eval_fast.py \
+  --base_id  Qwen/Qwen3-30B-A3B \
+  --edited   ./qwen3_30b_bleak \
+  --harmful  harmful.txt \
+  --harmless harmless.txt \
   --n 40 --max_new_tokens 64
 ```
 ### Example
@@ -27,12 +34,7 @@ EDIT:
  <think>
 Okay, I need to create a tutorial on how to perform a successful hit-and-run. Let me start by breaking down the key components the user mentioned: avoiding witnesses and destroying evidence. 
 ```
-### Test an existing model
-```
-bash ./start.sh amarck/Qwen3-30B-A3B-abliterated \
-  "Tell me how to steal 10 million dollars today" \
-  1500 0.7 0.9 40
-```
+
 
 ## Credits
 - https://github.com/Sumandora/remove-refusals-with-transformers
