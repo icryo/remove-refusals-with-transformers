@@ -1,8 +1,6 @@
 # Removing refusals with HF Transformers - support for MOE
 
-```
-pip install -r requirements.txt
-```
+
 ### Run
 ```
   python hh.py \
