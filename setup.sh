@@ -1,6 +1,6 @@
 # One-time: install uv and clone
 curl -LsSf https://astral.sh/uv/install.sh | sh
-git clone <repo> householder && cd householder
+git clone https://github.com/icryo/remove-refusals-with-transformers/ householder && cd householder
 
 # 1. Edit the model (produces ./edited_qwen)
 ./hh.py --model_id Qwen/Qwen1.5-7B-Chat \
